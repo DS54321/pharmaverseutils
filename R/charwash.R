@@ -4,6 +4,7 @@
 #   Identify special (non-ascii) characters in your R dataframes.
 #
 #   DStreng, 15July2026
+#   Casey Devine
 #
 # --------------------------------------------------
 
