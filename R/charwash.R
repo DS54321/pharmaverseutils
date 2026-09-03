@@ -12,14 +12,18 @@ library(lubridate)
 library(Unicode) #for looking up the long names for hex codes
 library(here)
 library(dplyr)
-library(writexl)
+#library(writexl)
+library(tidyverse)
+library(tibble)
 
+
+#here()
 # --------------------------------------------------------------------------------------------------
 # Step 0: Generate a test dataframe
 # --------------------------------------------------------------------------------------------------
 
 # Generate test dataset
-source(here("scripts", "nonstd_ascii_dataset_generator.R"))
+source(here("R", "nonstd_ascii_dataset_generator.R"))
 
 # Example: generate 100 records
 cm_test <- nonstd_ascii_dataset_generator(n=100)
@@ -35,73 +39,14 @@ cm_test <- nonstd_ascii_dataset_generator(n=100)
 # ascii control characters do have unicode names, but they are not available in the internal tables. 
 # So, we include this lookup table, defined below.
 
-control_names <- c(
-  '0x0000' = "NULL (NUL)",
-  '0x0001' = "START OF HEADING",
-  '0x0002' = "START OF TEXT",
-  '0x0003' = "END OF TEXT",
-  '0x0004' = "END OF TRANSMISSION",
-  '0x0005' = "ENQUIRY",
-  '0x0006' = "ACKNOWLEDGE",
-  '0x0007' = "BELL, ALERT (BEL)",
-  '0x0008' = "BACKSPACE (BS)",
-  '0x0009' = "HORIZONTAL TAB (TAB)",
-  '0x000A' = "LINE FEED (LF)",
-  '0x000B' = "VERTICAL TAB (VT)",
-  '0x000C' = "FORM FEED (FF)",
-  '0x000D' = "CARRIAGE RETURN (CR)",
-  '0x000E' = "SHIFT OUT",
-  '0x000F' = "SHIFT IN",
-  '0x0010' = "",   #TO BE FILLED IN
-  '0x0011' = "",
-  '0x0012' = "",
-  '0x0013' = "",
-  '0x0014' = "",
-  '0x0015' = "",
-  '0x0016' = "",
-  '0x0017' = "",
-  '0x0018' = "",
-  '0x0019' = "",
-  '0x001A' = "",
-  '0x001B' = "ESCAPE (ESC)",
-  '0x001C' = "",
-  '0x001D' = "",
-  '0x001E' = "",
-  '0x007F' = "DELETE (DEL)"
-)
+source(here("R","get_ascii_table.R"))
+
 
 # We will request all ascii character codes (control chars, printable chars, and extended ascii table chars)
 codes <- 0:255
 
-ascii_table <- data.frame(
-  char     = intToUtf8(codes, multiple = TRUE),
-
-  # IMPORTANT: pad hex to 4 digits so it matches control_names
-  hex_code = paste0("0x", toupper(format(as.hexmode(codes), width = 4))),
-
-  unicode_name = sapply(codes, function(cp) {
-
-    key <- paste0("0x", toupper(format(as.hexmode(cp), width = 4)))
-
-    # Use your custom control name if available
-    if (key %in% names(control_names)) {
-      return(control_names[[key]])
-    }
-
-    # Otherwise use Unicode name
-    nm <- Unicode::u_char_name(cp)
-    if (is.na(nm) || nm == "") {
-      return(paste0("UNKNOWN (U+", toupper(format(as.hexmode(cp), width = 4)), ")"))
-    }
-
-    nm
-  }),
-  replace_char = NA_character_,
-  stringsAsFactors = FALSE
-)
-
 ascii_table <- ascii_table %>%
-  select(hex_code, unicode_name, replace_char)  # drop the char field, this causes problems in csv.
+  select(hex_code, unicode_name, replace_char_hex_code)  # drop the char field, this causes problems in csv.
 
 
 # inhibit the hex_code field from attempts at conversion (e.g. treat as literal text)
@@ -110,7 +55,7 @@ ascii_table$hex_code <- I(ascii_table$hex_code)
 # output the ascii table as a .csv file, for manual editing.
 write.csv(
   x = ascii_table,
-  file = here("scripts", "ascii_table.csv"),
+  file = here("R", "ascii_table_worksheet.csv"),
   row.names = FALSE,
   na = "",
   fileEncoding = "UTF-8"
@@ -132,7 +77,7 @@ write.csv(
 
 # read in the manually adjusted ascii character table mapping .csv file
 ascii_table_map <- read.csv(
-  file = here("scripts","ascii_table_dianamap.csv"),   # WARNING! EXAMPLE ONLY FOR TESTING !!!!!!!!!!!!!!!!!!!!
+  file = here("R","ascii_table_worksheet_dianamap.csv"),   # WARNING! EXAMPLE ONLY FOR TESTING !!!!!!!!!!!!!!!!!!!!
   colClasses = "character",  #stops interpretation of hex codes
   stringsAsFactors = FALSE,
   fileEncoding = "UTF-8"
@@ -159,7 +104,7 @@ summarize_special_char_report <- function(df) {
     chars <- unlist(strsplit(x, ""))
 
     cps   <- utf8ToInt(x)
-    bad_idx <- which(cps < 32 | cps > 126)
+    bad_idx <- which(cps < 32 | cps > 126)  #identify the non-standard characters
     if (length(bad_idx) == 0) return(NULL)
 
     bad_chars <- chars[bad_idx]
@@ -167,8 +112,8 @@ summarize_special_char_report <- function(df) {
 
     bad_names <- sapply(cps[bad_idx], function(cp) {
       key <- paste0("0x", toupper(format(as.hexmode(cp))))
-      if (key %in% names(control_names)) {  # references control_names, created at top
-        control_names[[key]]
+      if (key %in% names(control_lookup)) {  # references control_lookup, created at top
+        control_lookup[[key]]
       } else {
         nm <- Unicode::u_char_name(cp)
         if (is.na(nm) || nm == "") paste0("UNKNOWN (U+", toupper(format(as.hexmode(cp))), ")") else nm
@@ -191,6 +136,12 @@ summarize_special_char_report <- function(df) {
     bad_rows <- sapply(df[[col]], function(x)
       grepl("[^\\x20-\\x7E]", x)
     )
+# NOTE::
+# "[^\\x20-\\x7E]": The regular expression pattern breaking down as:
+#   \x20: Hexadecimal code for space (" "), the first standard printable ASCII character.
+#   \x7E: Hexadecimal code for tilde ("~"), the last standard printable ASCII character.
+#   \x20-\x7E: The range of all standard printable ASCII characters (letters, numbers, basic punctuation, space).
+#   [^ ... ]: The ^ inside square brackets means NOT (negation).
 
     if (any(bad_rows)) {
 
@@ -225,6 +176,8 @@ summarize_special_char_report <- function(df) {
 # Input to this function is your dataframe containing character columns with potential non-printable ascii characters.
 review <- summarize_special_char_report(cm_test)
 
+warning("Is this what we want?")
+warning("This outputs one multiple rows per source row, one row to identify each non-standard ascii character present.")
 
 # Print the first 10 rows of each dataframe (review is a list of dataframes.)
 head(review, n=10)
@@ -265,3 +218,5 @@ replace_special_chars <- function(text_vector, replace_table) {
 cm_test$cleaned_CMCAT <- replace_special_chars(cm_test$CMCAT, ascii_table_map)
 
 
+# Check to make sure that we really did remove all the non-standard ascii characters:
+check_results <- summarize_special_char_report(cm_test |> select(cleaned_CMCAT))
