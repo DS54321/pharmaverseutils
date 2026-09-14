@@ -1,10 +1,35 @@
 #
 #   charwash.R
 #
-#   Identify special (non-ascii) characters in your R dataframes.
+#   Identify and clean special (non-standard ASCII) characters found in
+#   character columns of an R dataframe.
+#
+#   Workflow:
+#     0. Generate (or supply) a dataframe that may include non-standard characters.
+#     1. Build an ASCII lookup table (see get_ascii_table.R) and write it to
+#        a .csv worksheet for manual review.
+#     2. Manually edit that worksheet to add a replacement character (`replace_char`) for any hex
+#        codes that should be replaced, then read the edited file back in
+#        as `ascii_table_map`.
+#     3. find_nonstandard_chars(): scan a dataframe's character
+#        columns and report every non-standard character found (code
+#        points outside the standard printable ASCII range 0x20-0x7E).
+#     4. replace_nonstandard_chars(): using `ascii_table_map`, replace flagged
+#        characters in a single character column with their mapped
+#        replacements.
+#
+#   Depends on: get_ascii_table.R (for `control_lookup`, used to name
+#   non-standard characters) and nonstd_ascii_dataset_generator.R (for the
+#   example test dataset).
 #
 #   DStreng, 15July2026
 #   Casey Devine
+#
+#  Modifications:
+#  14Sep2026, DStreng - Updated doc block, moved "codes" to get_ascii_table.R. Revise comments.
+#    Change %>% to the base R |> . Renamed summarize_special_char_report() to
+#    find_nonstandard_chars() for clarity. Renamed replace_special_chars() to
+#    replace_nonstandard_chars() for consistency.
 #
 # --------------------------------------------------
 
@@ -13,7 +38,6 @@ library(lubridate)
 library(Unicode) #for looking up the long names for hex codes
 library(here)
 library(dplyr)
-#library(writexl)
 library(tidyverse)
 library(tibble)
 
@@ -34,19 +58,16 @@ cm_test <- nonstd_ascii_dataset_generator(n=100)
 
 
 # --------------------------------------------------------------------------------------------------
-# Step 1.A.: Generate an ascii character table.
+# Step 1: Generate an ascii character table.
 # --------------------------------------------------------------------------------------------------
 
-# ascii control characters do have unicode names, but they are not available in the internal tables. 
+# ascii control characters do have unicode names, but they are not available in R's internal  tables. 
 # So, we include this lookup table, defined below.
 
 source(here("R","get_ascii_table.R"))
 
 
-# We will request all ascii character codes (control chars, printable chars, and extended ascii table chars)
-codes <- 0:255
-
-ascii_table <- ascii_table %>%
+ascii_table <- ascii_table |>
   select(hex_code, unicode_name, replace_char_hex_code)  # drop the char field, this causes problems in csv.
 
 
@@ -62,15 +83,8 @@ write.csv(
   fileEncoding = "UTF-8"
 )
 
-# output as excel file 
-#write_xlsx(
-#  x = list(my_dataframe = ascii_table),
-#  path = here("scripts", "ascii_table.xlsx"
-#)
-
-
 # --------------------------------------------------------------------------------------------------------------
-# Step 1.B.: Manually update the ascii_table with replacement characters (if needed), and then read in the map.
+# Step 2: Manually update the ascii_table with replacement characters (if needed), and then read in the map.
 # --------------------------------------------------------------------------------------------------------------
 
 
@@ -88,7 +102,7 @@ ascii_table_map <- read.csv(
 # that will appear in the cleaned text value)
 
 # only keep those rows for conversion (e.g., where replace_char is not empty)
-ascii_table_map <- ascii_table_map %>%
+ascii_table_map <- ascii_table_map |>
   filter(!is.na(replace_char) & replace_char != "")
 
 
@@ -99,7 +113,7 @@ ascii_table_map <- ascii_table_map %>%
 # Step 3: Identify the bad characters and report them in an easy-to-read way.
 # --------------------------------------------------------------------------------------------------
 
-summarize_special_char_report <- function(df) {
+find_nonstandard_chars <- function(df) {
 
   extract_bad_info <- function(x) {
     chars <- unlist(strsplit(x, ""))
@@ -129,10 +143,16 @@ summarize_special_char_report <- function(df) {
     )
   }
 
+  # Check: there must be at least one character column to check.
+  char_cols <- names(df)[sapply(df, is.character)]
+  if (length(char_cols) == 0) {
+    warning("No character columns found in df; returning an empty report.")
+    return(list())
+  }
+
   report <- list()
 
-  for (col in names(df)) {
-    if (!is.character(df[[col]])) next
+  for (col in char_cols) {
 
     bad_rows <- sapply(df[[col]], function(x)
       grepl("[^\\x20-\\x7E]", x)
@@ -168,28 +188,29 @@ summarize_special_char_report <- function(df) {
     }
   }
 
+  # `report` is a list of one dataframe per source column, so distinct()
+  # must be applied to each dataframe individually (across all its columns)
+  # rather than to the list as a whole.
+  report <- report |>
+    lapply(distinct)
+
   return(report)
   
 }
-
-
 # Create your special character report.
 # Input to this function is your dataframe containing character columns with potential non-printable ascii characters.
-review <- summarize_special_char_report(cm_test)
-
-warning("Is this what we want?")
-warning("This outputs one multiple rows per source row, one row to identify each non-standard ascii character present.")
+review <- find_nonstandard_chars(cm_test)
 
 # Print the first 10 rows of each dataframe (review is a list of dataframes.)
-head(review, n=10)
+lapply(review, head, n = 10)
 
 
 # --------------------------------------------------------------------------------------------------
 # Step 4: Review each column text and perform the map (e.g. replace characters). Note that this 
-#         is performed piecewise on each column, not over the entire dataframe.
+#         is performed column-wise, not over the entire dataframe.
 # --------------------------------------------------------------------------------------------------
 
-replace_special_chars <- function(text_vector, replace_table) {
+replace_nonstandard_chars <- function(text_vector, replace_table) {
 
   out <- text_vector
 
@@ -213,11 +234,11 @@ replace_special_chars <- function(text_vector, replace_table) {
 }
 
 
-# Perform the cleaning, one character column at a time.
+# Perform the cleaning, one df character column at a time.
 # input to the function is the dataframe$column value, as well as 
 # the name of the manually adjusted ascii_table_map.csv file.
-cm_test$cleaned_CMCAT <- replace_special_chars(cm_test$CMCAT, ascii_table_map)
+cm_test$cleaned_CMCAT <- replace_nonstandard_chars(cm_test$CMCAT, ascii_table_map)
 
 
 # Check to make sure that we really did remove all the non-standard ascii characters:
-check_results <- summarize_special_char_report(cm_test |> select(cleaned_CMCAT))
+check_results <- find_nonstandard_chars(cm_test |> select(cleaned_CMCAT))
