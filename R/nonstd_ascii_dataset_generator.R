@@ -1,13 +1,22 @@
 #
+#   nonstd_ascii_dataset_generator.R
+#   (a.k.a. nasty dataset generator)
 #
-#  nonstd_ascii_dataset_generator.R
-#  (a.k.a. nasty dataset generator)
+#   Generate a synthetic dataset for testing identification of non-standard/
+#   control ASCII characters in your data. The dataset is based on the CDISC
+#   SDTM CM (Concomitant Medications) structure, with random special/control
+#   characters injected into the CMCAT, CMTRT, and CMDECOD text fields.
 #
-#  For testing identification of non-standard/ control ascii characters in your data.
-#  This example dataset is based on the CDISC SDTM CM (Concomitant Medications) structure.
+#   nonstd_ascii_dataset_generator(n = 100)
+#     n: number of observations (rows) to generate. Defaults to 100.
+#     Returns a dataframe with columns STUDYID, USUBJID, CMSEQ, CMSTDY,
+#     CMENDY, CMCAT, CMTRT, CMDECOD, CMSTDTC, CMENDTC.
 #
-#  Diana Streng
-#  16July2026
+#   Used by charwash.R as the example test dataset for
+#   find_nonstandard_chars() and replace_nonstandard_chars().
+#
+#   Diana Streng
+#   16July2026
 #-------------------------------------
 
 
