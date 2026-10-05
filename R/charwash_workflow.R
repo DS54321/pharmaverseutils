@@ -34,8 +34,11 @@
 # --------------------------------------------------
 
 library(here)
-
-source(here("R","setup.R"))
+library(lubridate)
+library(Unicode) #for looking up the long names for hex codes
+library(dplyr)
+library(tidyverse)
+library(tibble)
 
 # to generate test dataset
 source(here("R", "nonstd_ascii_dataset_generator.R"))
@@ -122,12 +125,25 @@ lapply(review, head, n = 10)
 # --------------------------------------------------------------------------------------------------
 
 
-
+# Option A:
 # Perform the cleaning, one df character column at a time.
 # input to the function is the dataframe$column value, as well as 
 # the name of the manually adjusted ascii_table_map.csv file.
-cm_test$cleaned_CMCAT <- charwash(cm_test$CMCAT, ascii_table_map)
 
+cm_test$cleaned_CMCAT <- charwash(cm_test$CMCAT, ascii_table_map)
 
 # Check to make sure that we really did remove all the non-standard ascii characters:
 check_results <- find_nonstd_chars(cm_test |> select(cleaned_CMCAT))
+
+
+
+# Option B:
+# Update to run through all the character columns within your dataframe, using tidyverse. 
+cm_test_clean2 <- cm_test |>
+  mutate( 
+    across(where(is.character), 
+    ~ charwash(.x, replace_table = ascii_table_map))
+  )
+
+# Check to make sure that we really did remove all the non-standard ascii characters:
+check_results2 <- find_nonstd_chars(cm_test_clean2 |> select(CMCAT))

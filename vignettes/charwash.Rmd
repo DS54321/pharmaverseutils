@@ -1,0 +1,37 @@
+---
+title: "Get Started with charwash()"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Get Started}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r eval=FALSE}
+library(admiraltemplate)
+```
+
+# Overview 
+
+Welcome to `charwash()`!\above
+
+`charwash()` reviews the content of character columns within your dataframe and returns information about the non-standard ascii characters within (if any).
+
+
+
+# Support
+
+Support is provided via [pharmaverse Slack](https://pharmaverse.slack.com/).
+
+
+# charwash()
+
+
+
