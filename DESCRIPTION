@@ -1,30 +1,19 @@
 Type: Package
-Package: admiraltemplate
-Title: ADaM in R Asset Library - Extension Package for `<<INSERT TA>>`
-Version: 0.1.0
+Package: pharmaverseutils
+Title: Utilities for pharmaverse workflows
+Version: 0.0.1
 Authors@R: 
-    person("Open", "Source", , "admiraltemplate@pharmaverse.com", role = c("aut", "cre"))
-Description: A toolbox for programming Clinical Data Standards Interchange
-    Consortium (CDISC) compliant Analysis Data Model (ADaM) datasets in R.
-    ADaM datasets are a mandatory part of any New Drug or Biologics
-    License Application submitted to the United States Food and Drug
-    Administration (FDA). Analysis derivations are implemented in
-    accordance with the "Analysis Data Model Implementation Guide" (CDISC
-    Analysis Data Model Team, 2021,
-    <https://www.cdisc.org/standards/foundational/adam>).  The package is
-    an extension package of the 'admiral' package.
+    person("Diana", "Streng", , "dstreng@orionanalytics.net", role = c("aut", "cre")),
+    person("Casey","Devine",,"xxx@gmail.com", role = c("cre")),
+    person("Sawyer","Wisniewkski",,"xxx@gmail.com", role = c("cre"))
+Description: A toolbox for supporting pharmaverse workflows.
 License: Apache License (>= 2)
-URL: https://pharmaverse.github.io/admiraltemplate,
-    https://github.com/pharmaverse/admiraltemplate
+URL: https://pharmaverse.github.io/pharmaverseutils,
+    https://github.com/pharmaverse/pharmaverseutils
 Depends: 
     R (>= 4.1)
 Imports:
-    admiral (>= 1.0.0),
-    admiraldev (>= 1.0.0),
     dplyr (>= 1.0.5),
-    hms (>= 0.5.3),
-    lifecycle (>= 0.1.0),
-    lubridate (>= 1.7.4),
     magrittr (>= 1.5),
     purrr (>= 0.3.3),
     rlang (>= 0.4.4),
@@ -32,13 +21,8 @@ Imports:
     tidyr (>= 1.0.2),
     tidyselect (>= 1.1.0)
 Suggests:
-    diffdf,
-    DT,
-    htmltools,
-    knitr,
-    methods,
-    pharmaversesdtm (>= 0.2.0),
-    reactable,
+    pharmaversesdtm (>= 1.5.0),
+    pharmaverseadam (>= 1.4.0),
     readxl,
     rmarkdown,
     testthat (>= 3.0.0),
