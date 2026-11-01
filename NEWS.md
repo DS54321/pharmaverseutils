@@ -1,6 +1,6 @@
 # pharmaverseutils 0.0.1
 
-- Initial package release focused on `<<ADD INITIAL SCOPE>>`
+- Initial package release focused on removing non-standard characters from dataframes.
 
 Note that after first release you should then start maintaining this `NEWS.md` file for every user-facing update.
 You should categorize the updates under title sections for New Features, Updates of Existing Functions,

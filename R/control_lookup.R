@@ -100,4 +100,9 @@ control_lookup <- tribble(
   "0x009F", 159, "APPLICATION PROGRAM COMMAND (APC)"
 )
 
+  # Extended ascii table: ascii characters after code 160
+  # and include accented letters, symbols, and other special characters.
+  
+  
+  
 }

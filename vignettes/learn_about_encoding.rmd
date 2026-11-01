@@ -1,0 +1,116 @@
+---
+title: "Learn about data encoding!"
+date: "01Nov2026"
+output: html_document
+---
+
+
+
+This page includes some basic information about data encoding that is helpful to know as you go about cleaning your data.
+
+# A little history
+Ascii was invented in the 1960s and uses 7 bits to represent 128 english characters including letters, numbers, symbols, and control characters. This is the standard ascii table, worldwide. As computing expanded internationally, many incompatible 8-bit encodings emerged because people needed to use different characters across many different languages. Example of encodings that emerged are Latin-1 (ISO-8859-1) and Windows Lating-1 (WLATIN1/ Windows-1252).
+
+These new characters are represented in the "expanded ascii table" of encodings (decimal values 128 +). To solve the inconsistencies arising from the expanded ascii table - Unicode was introduced in the 1990s as a universal standard for assigning a unique code point to every characters across all writing systems.
+
+Today, UTF-8 is the most common Unicode encoding and is the standard for data exchange on the web and software.
+
+# Encoding in Clinical Trials
+Windows Latin-1 (WLATIN1/Windows-1252) became common in business and SAS environments in the 1990's. These encodings were limited to 256 characters and often caused interoperability issues. For SAS programmers, it's worth noting the following progression (flowchart below). Many legacy clinical study environments ran/run in WLATIN1. 
+
+ASCII
+  ↓
+Extended ASCII encodings
+  ├─ Latin-1 (ISO-8859-1)
+  ├─ Windows-1252 (WLATIN1)
+  └─ many others
+  ↓
+Unicode
+  ↓
+UTF-8
+
+
+For example, '0x93' (this is a hexadecimal (base-16) value) can mean:
+- Windows-1252 (WLATIN1): left double quote (“)
+- Unicode U+0093: SET TRANSMIT STATE (a C1 control character)
+
+Which introduces ambiguity in the meaning of your data, if you are uncertain about encoding.
+
+If text is interpreted with the wrong encoding, those smart quotes can suddenly appear as "control characters" during your programming workflows. This is one example of the encoding problems encountered when migrating studies from WLATIN1 to UTF-8.
+
+# A note on decimal, headecimal, and binary representations
+0x93   = hexadecimal
+147    = decimal
+10010011 = binary
+
+You may have heard that computers store information as binary values, using only the digits 0 and 1. Because binary numbers can be difficult for humans to read, the same values are often represented in decimal (base 10) or hexadecimal (base 16) notation. 
+Decimal uses the digits 0-9 and is the numbering system most familiar to people, while hexadecimal uses the digits 0-9 and the letters A-F and provides a compact way to represent binary data. 
+
+For example: the value represented as binary 10010011 is equivalent to decimal 147 and hexadecimal 0x93, discussed above. 
+
+
+# Unicode General Categories
+
+... are standardized classifications assigned to every unicode codepoint.
+
+## The Unicode hierarchy looks roughly like this:
+
+### Letter (L)
+ ├─ Lu  Uppercase Letter
+ ├─ Ll  Lowercase Letter
+ └─ ...
+
+### Number (N)
+ ├─ Nd  Decimal Digit
+ └─ ...
+
+### Punctuation (P)
+ ├─ Pd  Dash Punctuation
+ └─ ...
+
+### Symbol (S)
+ ├─Sm  Mathematical symbol
+ ├─Sc  currency symbol
+ ├─Sk  modifier symbol
+ └─So  other symbol
+
+### Separator (Z)
+ ├─ Zs  Space Separator
+ ├─ Zl  Line Separator
+ └─ Zp  Paragraph Separator
+
+### Other (C)
+ ├─ Cc  Control
+ ├─ Cf  Format
+ ├─ Co  Private Use
+ ├─ Cs  Surrogate
+ └─ Cn  Unassigned
+
+
+# Encoding and Clinical Submissions
+
+What does the FDA Study Data Technical Conformance Guide say?
+
+https://www.fda.gov/regulatory-information/search-fda-guidance-documents/study-data-technical-conformance-guide-technical-specifications-document
+
+
+It focuses on the encoding requirements of the submission formats themselves. It does not explicitly restrict submission data to specific Unicode character categories. However, sponsors commonly screen for control, format, private-use, and other non-printing characters because these characters can cause interoperability and review issues in clinical submission packages.
+
+For clinical programmers, the key practical points are:
+- SAS XPT transport files remain the required transport format for SDTM and ADaM datasets.
+- define.xml files are XML-based, and XML is typically submitted using UTF-8 encoding.
+- Modern FDA guidance supports Unicode-based standards and submissions, but sponsors are expected to ensure that characters are represented correctly and do not interfere with review tools.
+
+
+<!-- 
+Note, to render in R:
+
+
+library(here)
+
+rmarkdown::render(
+  paste0( here(), "/vignettes/learn_about_encoding.rmd"),
+  output_dir = "vignettes"
+) -->
+
+

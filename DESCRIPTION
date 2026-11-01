@@ -7,22 +7,14 @@ Authors@R:
     person("Casey","Devine",,"xxx@gmail.com", role = c("cre")),
     person("Sawyer","Wisniewkski",,"xxx@gmail.com", role = c("cre"))
 Description: A toolbox for supporting pharmaverse workflows.
-License: Apache License (>= 2)
+License: MIT + file LICENSE
 URL: https://pharmaverse.github.io/pharmaverseutils,
     https://github.com/pharmaverse/pharmaverseutils
 Depends: 
     R (>= 4.1)
 Imports:
-    dplyr (>= 1.0.5),
-    magrittr (>= 1.5),
-    purrr (>= 0.3.3),
-    rlang (>= 0.4.4),
-    stringr (>= 1.4.0),
-    tidyr (>= 1.0.2),
-    tidyselect (>= 1.1.0)
+    dplyr (>= 1.0.5)
 Suggests:
-    pharmaversesdtm (>= 1.5.0),
-    pharmaverseadam (>= 1.4.0),
     readxl,
     rmarkdown,
     testthat (>= 3.0.0),
@@ -34,4 +26,4 @@ Encoding: UTF-8
 Language: en-US
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.1
+Config/roxygen2/version: 8.1.0
