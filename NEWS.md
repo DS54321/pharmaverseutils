@@ -1,4 +1,4 @@
-# admiraltemplate 0.1.0
+# pharmaverseutils 0.0.1
 
 - Initial package release focused on `<<ADD INITIAL SCOPE>>`
 
