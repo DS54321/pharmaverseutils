@@ -312,7 +312,7 @@ col0_clean <- replace_unicode_chars(
 )
 
 
-warning("still getting errors due to empty search patterns that are not supported!")
+warning("PROGRAMMERS NOTE:: still getting errors due to empty search patterns that are not supported! Needs updating.")
 
 
 
