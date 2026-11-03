@@ -158,6 +158,8 @@ cm_cleaned_control <- remove_chars_by_category(cm_test, "Cc")
 
 # -------------------------------3.b. REPLACE------------------------------
 
+
+
 # for other characters, we might want to replace them.
 
 # First define a replacement table (EXAMPLE)
@@ -167,10 +169,10 @@ replacement_table <- tibble::tribble(
   "U+0009", "HORIZONTAL TAB (TAB)", "U+0020", "SPACE", "Replace TAB with SPACE",
   "U+000A", "LINE FEED (LF)", "U+0020", "SPACE", "Replace LINE FEED with SPACE",
   "U+000D", "CARRIAGE RETURN (CR)", "U+0020", "SPACE", "Replace CARRIAGE RETURN with SPACE",
-  "U+200B", "ZERO WIDTH SPACE", "", "", "Remove ZERO WIDTH SPACE",
-  "U+200C", "ZERO WIDTH NON-JOINER", "", "", "Remove ZERO WIDTH NON-JOINER",
-  "U+200D", "ZERO WIDTH JOINER", "", "", "Remove ZERO WIDTH JOINER",
-  "U+FEFF", "BYTE ORDER MARK (BOM)", "", "", "Remove BYTE ORDER MARK",
+   "U+200B", "ZERO WIDTH SPACE", "", "", "Remove ZERO WIDTH SPACE" ,
+   "U+200C", "ZERO WIDTH NON-JOINER", "", "", "Remove ZERO WIDTH NON-JOINER" ,
+   "U+200D", "ZERO WIDTH JOINER", "", "", "Remove ZERO WIDTH JOINER" ,
+  # "U+FEFF", "BYTE ORDER MARK (BOM)", "", "", "Remove BYTE ORDER MARK" ,   # this BOM is a pain to manage
   "U+00A0", "NO-BREAK SPACE", "U+0020", "SPACE", "Replace NO-BREAK SPACE with SPACE",
   "U+2002", "EN SPACE", "U+0020", "SPACE", "Replace EN SPACE with SPACE",
   "U+2003", "EM SPACE", "U+0020", "SPACE", "Replace EM SPACE with SPACE",
@@ -193,16 +195,7 @@ replace_unicode_chars <- function(df, replacement_table, verbose = TRUE) {
     old_unicode <- replacement_table$old_unicode[i]
     new_unicode <- replacement_table$new_unicode[i]
 
-    # skip rows in the data where there is no replacement defined or old value is NULL.
-    # empty search patterns are not supported, and you'll get a warning message.
-    #if (is.na(old_unicode) || old_unicode == "" || old_unicode == "U+0000") {
-    #next
-
-    # ABOVE FAILS because some values actually resolve to empty using intToUTF8().
-    # problem values here are like U+200B (zero width space), U+200c (zero width non-joiner), 
-    # U+000A, U+FEFF (BOM) etc....
-
-  # Skip invalid search patterns
+  # Skip invalid search patterns - stringi will throw an error if pattern is empty ("") because there is nothing to match.
       if (is.na(old_unicode) ||
           old_unicode == "" ||
           old_unicode == "U+0000") {
@@ -213,7 +206,25 @@ replace_unicode_chars <- function(df, replacement_table, verbose = TRUE) {
 
         next
       }
+    
+    warning('BOM (byte order mark) is replaced with null ("") by design. Plan for future improvement if needed.')
 
+    # Also skip the BOM (U+FEFF), this causes warnings due to empty patterns.
+    # This is a known issue in stringi package (#516 in github issues for stringi) - the author states
+    # "The current policy it that generally the users themselves are responsible for removing BOMs from strings manually.".
+    # https://github.com/gagolews/stringi/issues/516 
+
+    # Let's just replace this with a "" then.
+    if (old_unicode == "U+FEFF") {
+      df <- gsub(
+        "\ufeff",
+        "",
+        df,
+        fixed = TRUE
+      )
+
+      next
+    }
 
     # Update to check the characters for old and new that are actually used
     old_char <- intToUtf8(
@@ -255,7 +266,7 @@ replace_unicode_chars <- function(df, replacement_table, verbose = TRUE) {
 
     }
     
-    # no empty search patterns are permitted
+    # Post-conversion check: no empty search patterns are permitted
     if (
       is.na(old_char) ||
       length(old_char) == 0 ||
@@ -282,16 +293,16 @@ replace_unicode_chars <- function(df, replacement_table, verbose = TRUE) {
     }
 
     # troubleshooting
-    cat(
-  "\nROW:", i,
-  "\nold_unicode:", old_unicode,
-  "\nnew_unicode:", new_unicode,
-  "\nold_char:", dQuote(old_char),
-  "\nnew_char:", dQuote(new_char),
-  "\nold_nchar:", nchar(old_char, type = "chars"),
-  "\nnew_nchar:", nchar(new_char, type = "chars"),
-  "\n"
-)
+#     cat(
+#   "\nROW:", i,
+#   "\nold_unicode:", old_unicode,
+#   "\nnew_unicode:", new_unicode,
+#   "\nold_char:", dQuote(old_char),
+#   "\nnew_char:", dQuote(new_char),
+#   "\nold_nchar:", nchar(old_char, type = "chars"),
+#   "\nnew_nchar:", nchar(new_char, type = "chars"),
+#   "\n"
+# )
     
     df <- stringi::stri_replace_all_fixed(
       df,
@@ -305,6 +316,9 @@ replace_unicode_chars <- function(df, replacement_table, verbose = TRUE) {
   df
   }
 
+
+
+
 # execute the replacement
 col0_clean <- replace_unicode_chars(
   col0,
@@ -312,26 +326,9 @@ col0_clean <- replace_unicode_chars(
 )
 
 
-warning("PROGRAMMERS NOTE:: still getting errors due to empty search patterns that are not supported! Needs updating.")
-
-
-
-
-# # something in the replacement table is yielding an empty search pattern.
-# # Find it!
-# find_it <- replacement_table |>
-#   dplyr::mutate(
-#     old_char = purrr::map_chr(
-#       old_unicode,
-#       \(x) {
-#         intToUtf8(
-#           strtoi(
-#             sub("^U\\+", "", x),
-#             base = 16L
-#           )
-#         )
-#       }
-#     ),
-#     old_char_length = nchar(old_char)
-#   ) |>
-#   dplyr::select(old_unicode, old_char, old_char_length)
+# THIS IS THE CAUSE of the empty search pattern warning! \ufeff (BOM, byte order mark)
+# stringi::stri_replace_all_fixed(
+#   "ABC",
+#   "\ufeff",
+#   ""
+# )
