@@ -39,10 +39,29 @@
 #' * `get_ascii_table()` — generate the ASCII lookup table
 #'
 #' @export
-charwash <- function(text_vector, replace_table) {
+charwash <- function(text_vector, replace_table, replace_all = NULL) {
+
+  # Specify replace_all OR replace_table, not both
+  if (!is.null(replace_all) && !is.null(replace_table)) {
+    stop("Specify either `replace_all` or `replace_table`, not both.")
+  }
+  if (is.null(replace_all) && is.null(replace_table)) {
+    stop("Specify either `replace_all` or `replace_table`.")
+  }
 
   # Initialize output as a copy of the input vector
   out <- text_vector
+
+  # Replace ALL non-standard characters with the specified replacement
+  if (!is.null(replace_all)) {
+    out <- gsub(
+      pattern     = "[^\\x20-\\x7E]",
+      replacement = replace_all,
+      x           = out,
+      perl        = TRUE
+    )
+    return(out)
+  }
 
   # Loop through each row of the replacement table
   for (i in seq_len(nrow(replace_table))) {
