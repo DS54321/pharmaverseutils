@@ -14,9 +14,250 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r eval=FALSE}
-library(admiraltemplate)
+```{r setup, eval=FALSE}
+
+library(here)
+#library(lubridate)
+#library(Unicode) 
+library(dplyr)
+#library(tidyverse)
+library(tibble)
+library(pharmaverseadam) # for testing
+
+# to generate test dataset
+source(here("R", "nonstd_ascii_dataset_generator.R"))
+
+# to identify rows in your vector that contain unicode characters (by category)
+source(here("R", "find_by_uni_category.R"))
+
+source(here("R", "replace_by_category.R"))
+
+source(here("R", "replace_by_codepoint.R"))
+#source(here("R", "replace_by_codepoint_old.R"))
 ```
+
+
+```{r get_test_data, eval=FALSE}
+
+# Generate 100 records of dirty data
+cm_test <- nonstd_ascii_dataset_generator(n=100)
+
+# this is the name of the column vector that we want to clean.
+col0 <- cm_test$CMCAT
+
+
+# This is clean data
+aeterm <- pharmaverseadam::adae |> select(AETERM)
+```
+
+```{r review_and_report}
+
+#-----------IDENTIFY and REVIEW------------------------------------
+
+# We are looking for the following categories of characters:
+# Cc  Control
+# Cf  Format (zero-width, BOM, etc.)
+# Zs  Non-standard spaces
+# Co  Private-use characters
+# Cn  Unassigned code points
+
+# initialize a storage list
+result <- list()
+
+catlist <- c("Cc", "Cf", "Zs", "Co", "Cn")
+
+# Find the rows in your vector that contain unicode characters by category.
+# Get the results and store them in a list named "result"
+for (cat in catlist) {
+   result[[cat]] <- find_by_uni_category(col0, cat, printsum=TRUE)
+}
+
+# The above does the following, but more efficiently:
+#result[['Cc']] <- find_by_uni_category(col0, "Cc", printdetails = FALSE) 
+#result[['Cf']] <- find_by_uni_category(col0, "Cf", printsum=TRUE)
+#result[['Zs']] <-find_by_uni_category(col0, "Zs")
+#result[['Co']] <-find_by_uni_category(col0, "Co")
+#result[['Cn']] <-find_by_uni_category(col0, "Cn")
+
+```
+
+```{r remove_chars_one_category}
+
+# -----------REMOVE-----------------------------------------
+# Eg, for control characters, we probably want to just remove them all.
+
+# Across all character columns in cm_test:
+
+# default, replaces control characters with null 
+cm_cleaned_control_a <- replace_by_category(cm_test, "Cc") #default replaces with null 
+
+# replace control characters with a string "12345"
+cm_cleaned_control_b <- replace_by_category(cm_test, "Cc", repl="12345")
+```
+
+```{r remove_chars_multiple_categories}
+# To clean your data for multiple categories:
+
+catlist <- c("Cc", "Cf", "Zs", "Co", "Cn")
+
+# Find the rows in your vector that contain unicode characters by category.
+cm_cleaned_combo <- cm_test
+
+for (cat in catlist) {
+  cm_cleaned_combo <- replace_by_category(
+    cm_cleaned_combo,
+    category = cat,
+    repl = "@"
+ )
+}
+
+
+```
+
+
+# User-specified character replacement
+
+```{r user_spec_replacement1}
+# First define a replacement table (EXAMPLE)
+replacement_table1 <- tibble::tribble(
+  ~old_unicode, ~old_name, ~new_unicode, ~new_value, ~action,
+  "U+0000", "NULL (NUL)", "", "", "Remove NULL character",
+  "U+0009", "HORIZONTAL TAB (TAB)", "U+0020", "SPACE", "Replace TAB with SPACE",
+  "U+000A", "LINE FEED (LF)", "U+0020", "SPACE", "Replace LINE FEED with SPACE",
+  "U+000D", "CARRIAGE RETURN (CR)", "U+0020", "SPACE", "Replace CARRIAGE RETURN with SPACE",
+   "U+200B", "ZERO WIDTH SPACE", "", "", "Remove ZERO WIDTH SPACE" ,
+   "U+200C", "ZERO WIDTH NON-JOINER", "", "", "Remove ZERO WIDTH NON-JOINER" ,
+   "U+200D", "ZERO WIDTH JOINER", "", "", "Remove ZERO WIDTH JOINER" ,
+  # "U+FEFF", "BYTE ORDER MARK (BOM)", "", "", "Remove BYTE ORDER MARK" ,   # this BOM is a pain to manage
+  "U+00A0", "NO-BREAK SPACE", "U+0020", "SPACE", "Replace NO-BREAK SPACE with SPACE",
+  "U+2002", "EN SPACE", "U+0020", "SPACE", "Replace EN SPACE with SPACE",
+  "U+2003", "EM SPACE", "U+0020", "SPACE", "Replace EM SPACE with SPACE",
+  "U+2018", "LEFT SINGLE QUOTATION MARK", "U+0027", "APOSTROPHE", "Replace LEFT SINGLE QUOTE with APOSTROPHE",
+  "U+2019", "RIGHT SINGLE QUOTATION MARK", "U+0027", "APOSTROPHE", "Replace RIGHT SINGLE QUOTE with APOSTROPHE",
+  "U+201C", "LEFT DOUBLE QUOTATION MARK", "U+0022", "QUOTATION MARK", "Replace LEFT DOUBLE QUOTE with QUOTATION MARK",
+  "U+201D", "RIGHT DOUBLE QUOTATION MARK", "U+0022", "QUOTATION MARK", "Replace RIGHT DOUBLE QUOTE with QUOTATION MARK",
+  "U+2013", "EN DASH", "U+002D", "HYPHEN-MINUS", "Replace EN DASH with HYPHEN-MINUS",
+  "U+2014", "EM DASH", "U+002D", "HYPHEN-MINUS", "Replace EM DASH with HYPHEN-MINUS",
+  "U+2026", "HORIZONTAL ELLIPSIS", "U+002E", "PERIOD", "Replace ELLIPSIS with PERIOD"
+)
+
+#print(replacement_table)
+
+
+
+# execute the replacement, operates on one column (vector) within a dataframe
+# col0_clean <- replace_by_codepoint_old(
+#   col0, # like adcm$CMTRT
+#   replacement_table1
+# )
+
+col0_clean <- replace_by_codepoint(
+  col0, # like adcm$CMTRT
+  replacement_table1
+)
+
+
+
+# PROGRAMMERS NOTE:: 
+# The codepoint U+FEFF (\ufeff, a.k.a. byte order mark (BOM)) is replaced with null ("") by design. 
+# This is because the BOM causes a warning for empty search pattern in this workflow.
+# Try this for example of warning:
+# stringi::stri_replace_all_fixed(
+#   "ABC",
+#   "\ufeff",
+#   ""
+# )
+
+
+```
+
+```{r user_spec_replacement2}
+
+# Another example replacement table for things we want to remove/replace in our data.
+# This replacement table example below shows that we can identify codepoints that are multi-byte sequences (when encoded in 
+# UTF-8) - like the vulgar 1/4 - and replace them with a multi-character replacement - like "1/4".
+#
+# Note that some are text strings like "ASCII TEXT" or "ASTERISK" which are a bit silly but good for illustrative purposes.
+
+replacement_table2 <- tibble::tribble(
+  ~old_unicode, ~old_name, ~new_unicode, ~new_value, ~action,
+
+  # SMART SINGLE QUOTES
+  "U+2018", "LEFT SINGLE QUOTATION MARK", "U+0027", "APOSTROPHE",
+  "Replace smart quote with apostrophe",
+  "U+2019", "RIGHT SINGLE QUOTATION MARK", "U+0027", "APOSTROPHE",
+  "Replace smart quote with apostrophe",
+  "U+201B", "SINGLE HIGH-REVERSED-9 QUOTATION MARK", "U+0027", "APOSTROPHE",
+  "Replace quote with apostrophe",
+
+  # SMART DOUBLE QUOTES
+  "U+201C", "LEFT DOUBLE QUOTATION MARK", "U+0022", "QUOTATION MARK",
+  "Replace smart quote with quote",
+  "U+201D", "RIGHT DOUBLE QUOTATION MARK", "U+0022", "QUOTATION MARK",
+  "Replace smart quote with quote",
+
+  # DASHES
+  "U+2010", "HYPHEN", "U+002D", "HYPHEN-MINUS",
+  "Normalize hyphen",
+  "U+2011", "NON-BREAKING HYPHEN", "U+002D", "HYPHEN-MINUS",
+  "Normalize hyphen",
+  "U+2012", "FIGURE DASH", "U+002D", "HYPHEN-MINUS",
+  "Normalize dash",
+  "U+2013", "EN DASH", "U+002D", "HYPHEN-MINUS",
+  "Normalize dash",
+  "U+2014", "EM DASH", "U+002D", "HYPHEN-MINUS",
+  "Normalize dash",
+  "U+2212", "MINUS SIGN", "U+002D", "HYPHEN-MINUS",
+  "Normalize minus sign",
+
+  # ELLIPSIS
+  "U+2026", "HORIZONTAL ELLIPSIS", "U+002E", "PERIOD",
+  "Replace ellipsis with period",
+
+  # BULLETS
+  "U+2022", "BULLET", "U+002A", "ASTERISK",
+  "Replace bullet with asterisk",
+  "U+25CF", "BLACK CIRCLE", "U+002A", "ASTERISK",
+  "Replace bullet with asterisk",
+
+  # FRACTIONS ----> This is where new_value is needed, where we replace not with unicode but with text string like "1/2"
+  "U+00BC", "VULGAR FRACTION ONE QUARTER", "1/4", "ASCII TEXT","Normalize fraction",
+  "U+00BD", "VULGAR FRACTION ONE HALF", "1/2", "ASCII TEXT","Normalize fraction",
+  "U+00BE", "VULGAR FRACTION THREE QUARTERS", "3/4", "ASCII TEXT","Normalize fraction",
+
+  # TRADEMARKS / COPYRIGHTS 
+  "U+00A9", "COPYRIGHT SIGN", "(C)", "ASCII TEXT",
+  "Normalize copyright",
+  "U+00AE", "REGISTERED SIGN", "(R)", "ASCII TEXT",
+  "Normalize registered mark",
+  "U+2122", "TRADE MARK SIGN", "(TM)", "ASCII TEXT",
+  "Normalize trademark"
+)
+
+
+#execute the replacement over all the character columns in a dataframe
+cm_clean <- cm_test %>%
+  mutate(
+    across(
+      where(is.character),
+      ~ replace_by_codepoint(.x, replacement_table2)
+    )
+  )
+
+
+# Some values in cm_test$CMCAT are getting replaced entirely with null!
+
+x <- "ANALGESICS©¶≈"
+
+check_this <- replace_by_codepoint(x, replacement_table2)
+
+
+
+```
+
+
+
+
 
 # Overview 
 

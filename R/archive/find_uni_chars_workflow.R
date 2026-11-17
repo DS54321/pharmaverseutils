@@ -1,10 +1,10 @@
 #
-# find_nonstd_chars_uni.R
+# find_uni_chars.R
 #
 # Find nonstandard characters using unicode codepoints.
 #
 # DStreng, 01Nov2026
-
+#------------------------------------
 
 
 # Detect
